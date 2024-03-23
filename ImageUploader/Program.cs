@@ -54,6 +54,33 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
     return await Task.FromResult(Results.Redirect($"/picture/{id}"));
 }).DisableAntiforgery();
 
+app.MapGet("/pictureFile/{id}", (string id) =>
+{
+    var data = GetImageData(id);
+    return data == null ? Results.NotFound() : Results.File(data["path"], data["contentType"]);
+});
+
+app.MapGet("/picture/{id}", (string id) =>
+{
+    var data = GetImageData(id);
+    return data == null
+        ? Results.NotFound()
+        : Results.Content($"""
+                           <html>
+                           <head>
+                               <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+                           </head>
+                           <body>
+                               <div class="container">
+                                   <h1>{data?["title"]}</h1>
+                                   <img src="/pictureFile/{id}" class="img-fluid" width=500 />
+                               </div>
+                           </body>
+                           </html>
+                           """, contentType: "text/html");
+});
+
+
 app.Run();
 return;
 
@@ -63,3 +90,19 @@ bool IsImage(IFormFile file)
     return allowedContentTypes.Contains(file.ContentType);
 }
 
+Dictionary<string, string>? GetImageData(string id)
+{
+    var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "picture", "data.json");
+    if (!File.Exists(jsonPath))
+    {
+        return null;
+    }
+
+    var json = File.ReadAllText(jsonPath);
+    var data = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(json);
+    if (data != null && (!data.ContainsKey(id) || !File.Exists(data[id]["path"])))
+    {
+        return null;
+    }
+    return data?[id];
+}
