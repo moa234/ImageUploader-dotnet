@@ -1,4 +1,3 @@
-using System.Net.Mime;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,12 +32,12 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
 
     // save image with unique id
     var id = Guid.NewGuid().ToString();
-    var path = Path.Combine(Directory.GetCurrentDirectory(), "picture", id + Path.GetExtension(file.FileName));
+    var path = Path.Combine("picture", id + Path.GetExtension(file.FileName));
     await using var stream = new FileStream(path, FileMode.Create);
     await file.CopyToAsync(stream);
 
     //create or read json file to store titles and image path mapped to specific id
-    var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "picture", "data.json");
+    var jsonPath = Path.Combine("picture", "data.json");
     var data = new Dictionary<string, Dictionary<string, string>>();
     if (File.Exists(jsonPath))
     {
@@ -57,7 +56,12 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
 app.MapGet("/pictureFile/{id}", (string id) =>
 {
     var data = GetImageData(id);
-    return data == null ? Results.NotFound() : Results.File(data["path"], data["contentType"]);
+    if (data == null)
+    {
+        return Results.NotFound();
+    }
+    var stream = File.OpenRead(data["path"]);
+    return Results.File(stream, data["contentType"]);
 });
 
 app.MapGet("/picture/{id}", (string id) =>
@@ -72,7 +76,7 @@ app.MapGet("/picture/{id}", (string id) =>
                            </head>
                            <body>
                                <div class="container">
-                                   <h1>{data?["title"]}</h1>
+                                   <h1>{data["title"]}</h1>
                                    <img src="/pictureFile/{id}" class="img-fluid" width=500 />
                                </div>
                            </body>
@@ -92,7 +96,7 @@ bool IsImage(IFormFile file)
 
 Dictionary<string, string>? GetImageData(string id)
 {
-    var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "picture", "data.json");
+    var jsonPath = Path.Combine("picture", "data.json");
     if (!File.Exists(jsonPath))
     {
         return null;
