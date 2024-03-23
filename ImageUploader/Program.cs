@@ -24,6 +24,36 @@ app.MapGet("/", () => Results.Content("""
                                       </html>
                                       """, "text/html"));
 
+app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
+{
+    if (!IsImage(file))
+    {
+        return Results.BadRequest("Invalid file type");
+    }
+
+    // save image with unique id
+    var id = Guid.NewGuid().ToString();
+    var path = Path.Combine(Directory.GetCurrentDirectory(), "picture", id + Path.GetExtension(file.FileName));
+    await using var stream = new FileStream(path, FileMode.Create);
+    await file.CopyToAsync(stream);
+
+    //create or read json file to store titles and image path mapped to specific id
+    var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "picture", "data.json");
+    var data = new Dictionary<string, Dictionary<string, string>>();
+    if (File.Exists(jsonPath))
+    {
+        var json = await File.ReadAllTextAsync(jsonPath);
+        data = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(json);
+    }
+
+    // add new image data to json file
+    data?.Add(id,
+        new Dictionary<string, string> { { "title", title }, { "path", path }, { "contentType", file.ContentType } });
+    await File.WriteAllTextAsync(jsonPath, JsonSerializer.Serialize(data));
+
+    return await Task.FromResult(Results.Redirect($"/picture/{id}"));
+}).DisableAntiforgery();
+
 app.Run();
 return;
 
