@@ -32,6 +32,7 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
 
     // save image with unique id
     var id = Guid.NewGuid().ToString();
+    Directory.CreateDirectory("picture");
     var path = Path.Combine("picture", id + Path.GetExtension(file.FileName));
     await using var stream = new FileStream(path, FileMode.Create);
     await file.CopyToAsync(stream);
