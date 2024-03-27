@@ -73,8 +73,10 @@ app.MapGet("/pictureFile/{id}", (string id) =>
         return Results.NotFound();
     }
 
-    var stream = File.OpenRead(data["path"]);
-    return Results.File(stream, data["contentType"]);
+    using var stream = File.OpenRead(data["path"]);
+    byte[] buffer = new byte[stream.Length];
+    stream.Read(buffer, 0, buffer.Length);
+    return Results.File(buffer, data["contentType"]);
 });
 
 app.MapGet("/picture/{id}", (string id) =>
