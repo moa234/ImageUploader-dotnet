@@ -62,7 +62,7 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
         new Dictionary<string, string> { { "title", title }, { "path", path }, { "contentType", file.ContentType } });
     await File.WriteAllTextAsync(jsonPath, JsonSerializer.Serialize(data));
 
-    return await Task.FromResult(Results.Redirect($"/picture/{id}"));
+    return Results.Redirect($"/picture/{id}");
 });
 
 app.MapGet("/pictureFile/{id}", (string id) =>
@@ -73,8 +73,11 @@ app.MapGet("/pictureFile/{id}", (string id) =>
         return Results.NotFound();
     }
 
-    var stream = File.OpenRead(data["path"]);
-    return Results.File(stream, data["contentType"]);
+    return Results.Stream(async stream =>
+    {
+        await using var fileStream = File.OpenRead(data["path"]);
+        await fileStream.CopyToAsync(stream);
+    }, data["contentType"]);
 });
 
 app.MapGet("/picture/{id}", (string id) =>
@@ -82,19 +85,20 @@ app.MapGet("/picture/{id}", (string id) =>
     var data = GetImageData(id);
     return data == null
         ? Results.NotFound()
-        : Results.Content($"""
-                           <html>
-                           <head>
-                               <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-                           </head>
-                           <body>
-                               <div class="container">
-                                   <h1>{data["title"]}</h1>
-                                   <img src="/pictureFile/{id}" class="img-fluid" width=500 />
-                               </div>
-                           </body>
-                           </html>
-                           """, contentType: "text/html");
+        : Results.Content(
+            $"""
+             <html>
+             <head>
+                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+             </head>
+             <body>
+                 <div class="container">
+                     <h1>{data["title"]}</h1>
+                     <img src="/pictureFile/{id}" class="img-fluid" width=500 />
+                 </div>
+             </body>
+             </html>
+             """, contentType: "text/html");
 });
 
 
