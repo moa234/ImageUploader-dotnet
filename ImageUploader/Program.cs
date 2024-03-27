@@ -65,7 +65,7 @@ app.MapPost("/upload", async (IFormFile file, [FromForm] string title) =>
     return await Task.FromResult(Results.Redirect($"/picture/{id}"));
 });
 
-app.MapGet("/pictureFile/{id}", (string id) =>
+app.MapGet("/pictureFile/{id}", async (string id) =>
 {
     var data = GetImageData(id);
     if (data == null)
@@ -73,9 +73,9 @@ app.MapGet("/pictureFile/{id}", (string id) =>
         return Results.NotFound();
     }
 
-    using var stream = File.OpenRead(data["path"]);
+    await using var stream = File.OpenRead(data["path"]);
     byte[] buffer = new byte[stream.Length];
-    stream.Read(buffer, 0, buffer.Length);
+    await stream.ReadAsync(buffer);
     return Results.File(buffer, data["contentType"]);
 });
 
